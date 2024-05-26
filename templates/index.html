@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROTOTYPE::Heavy Equipment Labeling Pipeline::PROTOTYPE</title>
+    <style>
+        body {
+            background-image: url('{{ url_for('static', filename='images/background.png') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 50px auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #444;
+        }
+        .message-box {
+            padding: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .success {
+            color: green;
+            border: 1px solid green;
+        }
+        .error {
+            color: red;
+            border: 1px solid red;
+        }
+        .loading {
+            display: none;
+            font-weight: bold;
+            color: blue;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 255, 0.1);
+            border-left-color: blue;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+        }
+        label, textarea, input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        textarea, input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .file-input {
+            border: none;
+        }        
+    </style>
+</head>
+<body>
+    <h1 class="container">Update API URL and API Key</h1>
+    <div class="message-box success" id="success-box"></div>
+    <div class="message-box error" id="error-box"></div>
+    <form id="update-form" method="post" class="container">
+        <label for="api_select">API Select:</label>
+        <select id="api_select" name="api_select" required>
+            <option value="google_gemini">Google Gemini API</option>
+            <option value="custom">Custom URL</option>
+        </select>
+        <br><br>
+        <div id="custom_url_div" style="display:none;">
+            <label for="api_url">API URL:</label>
+            <input type="text" id="api_url" name="api_url" value="{{ default_api_url }}">
+            <br><br>
+        </div>      
+        <label for="api_key">API Key:</label>
+        <input type="text" id="api_key" name="api_key" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+        <br><br>
+        <button type="submit">Update</button>
+    </form>
+
+
+    <h1 class="container">Use API</h1>
+    <div class="message-box success" id="success-box"></div>
+    <div class="message-box error" id="error-box"></div>
+    <form id="use-api-form" method="post" class="container">
+        <label for="text">Text Prompt:</label>
+        <textarea id="text" name="text" rows="4" cols="50" required>Tell me what is in this image. Return results in json. Categorize using one of these labels. Reply with the label and a confidence score only. if confidence would be low, use label unknown:
+            backhoe dumptruck-articulated dumptruck-doublebottom dumptruck-lowside dumptruck-rocktruck dumptruck-super10 elevating-scraper motorgrader pushpull-scraper skiploader track-dozer track-excavator track-loader track-skidsteer wheel-dozer wheel-excavator wheel-loader wheel-skidsteer        
+        </textarea>
+        <br><br>
+        <label for="images">Select Images:</label>
+        <input type="file" id="images" name="images" accept="image/*" multiple required>
+        <br><br>
+        <button type="submit">Submit</button>
+    </form>
+    <div id="loading" class="loading">
+        <span class="spinner"></span> Working...
+    </div>
+    <div id="response-box" style="margin-top: 20px;" class="container"></div>
+    <div id="download-link" style="margin-top: 20px;" class="container"></div>
+
+    <script>
+        document.getElementById('use-api-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            // Show loading indicator
+            var loadingIndicator = document.getElementById('loading');
+            loadingIndicator.style.display = 'block';
+
+
+            fetch('/use_api', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { throw new Error(text) });
+                }
+                return response.json();  // Adjusted to expect JSON response
+            })
+            .then(data => {
+                var responseBox = document.getElementById('response-box');
+                var downloadLink = document.getElementById('download-link');
+                
+                responseBox.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                downloadLink.innerHTML = `<a href="${data.download_link}" download>Download Results</a>`;
+
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            })
+            .catch(error => {
+                var errorBox = document.getElementById('error-box');
+                errorBox.style.display = 'block';
+                errorBox.innerHTML = error.message;
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            });
+        });
+
+        document.getElementById('api_select').addEventListener('change', function() {
+            var customUrlDiv = document.getElementById('custom_url_div');
+            if (this.value === 'custom') {
+                customUrlDiv.style.display = 'block';
+                document.getElementById('api_url').setAttribute('required', 'required');
+            } else {
+                customUrlDiv.style.display = 'none';
+                document.getElementById('api_url').removeAttribute('required');
+            }
+        });
+
+
+        document.getElementById('update-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            fetch('/update_api_url', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { throw new Error(text) });
+                }
+                return response.text();
+            })
+            .then(data => {
+                var successBox = document.getElementById('success-box');
+                var errorBox = document.getElementById('error-box');
+
+                successBox.style.display = 'block';
+                successBox.innerHTML = data;
+                errorBox.style.display = 'none';
+                // Clear the API key input field
+                document.getElementById('api_key').value = '';
+                
+            })
+            .catch(error => {
+                var errorBox = document.getElementById('error-box');
+                errorBox.style.display = 'block';
+                errorBox.innerHTML = error.message;
+            });
+        });
+
+        // Trigger change event to ensure correct initial state
+        document.getElementById('api_select').dispatchEvent(new Event('change'));
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+flask
+requests
+cryptography
+flask_sqlalchemy
+pillow
+python-dotenv
+google-generativeai
