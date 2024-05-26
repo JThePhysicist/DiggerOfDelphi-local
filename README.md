@@ -1,4 +1,4 @@
-# DiggerOfDelphi-local
+# DiggerOfDelphi-local v.0.0.1
 
 System runs as a webserver, gives the user the option to select files, enter their API key and then label heavy equipment in photos. Only uses Google Gemini Pro Vision at the moment
 
